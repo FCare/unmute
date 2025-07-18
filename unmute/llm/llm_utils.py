@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from copy import deepcopy
@@ -9,10 +10,27 @@ from openai import AsyncOpenAI, OpenAI
 
 from unmute.kyutai_constants import LLM_SERVER
 
-from ..kyutai_constants import KYUTAI_LLM_MODEL
+from ..kyutai_constants import KYUTAI_LLM_MODEL, KYUTAI_LLM_API_KEY
 
 INTERRUPTION_CHAR = "—"  # em-dash
 USER_SILENCE_MARKER = "..."
+
+
+def clean_text_for_tts(text: str) -> str:
+    """Supprime uniquement les emojis qui causent des artefacts TTS"""
+    # Supprimer les emojis (caractères Unicode dans les plages d'emojis)
+    emoji_pattern = re.compile(
+        "["
+        "\U0001F600-\U0001F64F"  # emoticons
+        "\U0001F300-\U0001F5FF"  # symbols & pictographs
+        "\U0001F680-\U0001F6FF"  # transport & map symbols
+        "\U0001F1E0-\U0001F1FF"  # flags (iOS)
+        "\U00002702-\U000027B0"  # dingbats
+        "\U000024C2-\U0001F251"  # enclosed characters
+        "]+",
+        flags=re.UNICODE
+    )
+    return emoji_pattern.sub('', text)
 
 
 def preprocess_messages_for_llm(
@@ -117,15 +135,15 @@ class MistralStream:
             yield delta
 
 
-def get_openai_client(server_url: str = LLM_SERVER) -> AsyncOpenAI:
-    return AsyncOpenAI(api_key="EMPTY", base_url=server_url + "/v1")
+def get_openai_client(server_url: str = LLM_SERVER, api_key: str = KYUTAI_LLM_API_KEY or "EMPTY") -> AsyncOpenAI:
+    return AsyncOpenAI(api_key=api_key, base_url=server_url + "/v1")
 
 
 @cache
 def autoselect_model() -> str:
     if KYUTAI_LLM_MODEL is not None:
         return KYUTAI_LLM_MODEL
-    client_sync = OpenAI(api_key="EMPTY", base_url=get_openai_client().base_url)
+    client_sync = OpenAI(api_key=get_openai_client().api_key, base_url=get_openai_client().base_url)
     models = client_sync.models.list()
     if len(models.data) != 1:
         raise ValueError("There are multiple models available. Please specify one.")
@@ -167,4 +185,13 @@ class VLLMStream:
                     # https://github.com/ggml-org/llama.cpp/blob/6491d6e4f1caf0ad2221865b4249ae6938a6308c/tools/server/tests/unit/test_chat_completion.py#L338
                     continue
 
-                yield chunk_content
+                # Nettoyer le texte avec la version douce qui préserve le rythme
+                cleaned_content = clean_text_for_tts(chunk_content)
+                
+                # Logging pour voir tout le texte qui passe
+                logging.info(f"TEXT CHUNK: {repr(chunk_content)}")
+                if chunk_content != cleaned_content:
+                    logging.info(f"TEXT CLEANING - EMOJI SUPPRIMÉ: {repr(chunk_content)} → {repr(cleaned_content)}")
+                
+                if cleaned_content:  # Seulement si il reste du contenu après nettoyage
+                    yield cleaned_content
