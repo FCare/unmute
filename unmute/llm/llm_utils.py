@@ -53,12 +53,8 @@ def clean_text_for_tts(text: str) -> str:
     # Ex: "Salut <en anglais>" → "Salut "
     text = re.sub(r'<[^>]*>', '', text)
     
-    # Nettoyer les espaces multiples créés par les suppressions
-    text = re.sub(r'\s+', ' ', text)
-    
-    # Nettoyer les espaces en début/fin
-    text = text.strip()
-    
+    # Conserver les espaces multiples pour préserver le rythme TTS
+    # Seulement nettoyer les espaces en début/fin si nécessaire
     return text
 
 
