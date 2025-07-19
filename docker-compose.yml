@@ -49,6 +49,7 @@ services:
       - KYUTAI_LLM_THINK=${KYUTAI_LLM_THINK:-false}
       - KYUTAI_LLM_API_KEY=ollama
       - NEWSAPI_API_KEY=$NEWSAPI_API_KEY
+      - TMDB_API_KEY=$TMDB_API_KEY
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
