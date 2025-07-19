@@ -35,6 +35,8 @@ class Chatbot:
                 return "waiting_for_user"
         elif last_message["role"] == "system":
             return "waiting_for_user"
+        elif last_message["role"] == "tool":
+            return "waiting_for_user"  # Message d'outil → attendre la suite
         else:
             raise RuntimeError(f"Unknown role: {last_message['role']}")
 
