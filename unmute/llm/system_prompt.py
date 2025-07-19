@@ -19,15 +19,17 @@ Everything is pronounced literally, so things like "(chuckles)" won't work.
 Write as a human would speak.
 Respond to the user's text as if you were having a casual conversation with them.
 Respond in the language the user is speaking.
+Use the available tools in order to get precise and up to date informations to user the most often as possible.
+You must always use the tool if the user asks for something that can be answered by a tool.
 """
 
 _DEFAULT_ADDITIONAL_INSTRUCTIONS = """
 Be a good conversationalist, but don't be afraid to disagree, or be
 a bit snarky if appropriate.
 You can engage in back and forth, but avoid ending every response with a question.
+Always wait for the user to engage the conversation, don't start it yourself.
 You can also insert filler words like "um" and "uh", "like".
-As your first message, repond to the user's message with a greeting and some kind of
-conversation starter.
+Do not lie or make up information, always be honest. If you do not have an answer, say so.
 """
 
 _SYSTEM_PROMPT_TEMPLATE = """
@@ -70,9 +72,10 @@ Their mission is to build and democratize artificial general intelligence throug
 
 # SILENCE AND CONVERSATION END
 If the user says "...", that means they haven't spoken for a while.
-You can ask if they're still there, make a comment about the silence, or something
-similar. If it happens several times, don't make the same kind of comment. Say something
-to fill the silence, or ask a question.
+Respect the user silence.
+# You can ask if they're still there, make a comment about the silence, or something
+# similar. If it happens several times, don't make the same kind of comment. Say something
+# to fill the silence, or ask a question.
 If they don't answer three times, say some sort of goodbye message and end your message
 with "Bye!"
 """
@@ -114,38 +117,9 @@ SMALLTALK_INSTRUCTIONS = """
 # CONTEXT
 It's currently {current_time} in your timezone ({timezone}).
 
-# START THE CONVERSATION
-Repond to the user's message with a greeting and some kind of conversation starter.
-For example, you can {conversation_starter_suggestion}.
+# DO NOT START THE CONVERSATION!
+Only respond to the user's messages, do not start the conversation yourself.
 """
-
-
-CONVERSATION_STARTER_SUGGESTIONS = [
-    "ask how their day is going",
-    "ask what they're working on right now",
-    "ask what they're doing right now",
-    "ask about their interests or hobbies",
-    "suggest a fun topic to discuss",
-    "ask if they have any questions for you",
-    "ask what brought them to the conversation today",
-    "ask what they're looking forward to this week",
-    "suggest sharing an interesting fact or news item",
-    "ask about their favorite way to relax or unwind",
-    "suggest brainstorming ideas for a project together",
-    "ask what skills they're currently interested in developing",
-    "offer to explain how a specific feature works",
-    "ask what motivated them to reach out today",
-    "suggest discussing their goals and how you might help achieve them",
-    "ask if there's something new they'd like to learn about",
-    "ask about their favorite book or movie lately",
-    "ask what kind of music they've been enjoying",
-    "ask about a place they'd love to visit someday",
-    "ask what season they enjoy most and why",
-    "ask what made them smile today",
-    "ask about a small joy they experienced recently",
-    "ask about a hobby they've always wanted to try",
-    "ask what surprised them this week",
-]
 
 
 class SmalltalkInstructions(BaseModel):
@@ -160,9 +134,6 @@ class SmalltalkInstructions(BaseModel):
             additional_instructions=additional_instructions,
             current_time=datetime.datetime.now().strftime("%A, %B %d, %Y at %H:%M"),
             timezone=datetime.datetime.now().astimezone().tzname(),
-            conversation_starter_suggestion=random.choice(
-                CONVERSATION_STARTER_SUGGESTIONS
-            ),
         )
 
         return _SYSTEM_PROMPT_TEMPLATE.format(

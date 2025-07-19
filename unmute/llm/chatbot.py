@@ -1,8 +1,9 @@
 from logging import getLogger
-from typing import Any, Literal
+from typing import Any, Literal, AsyncIterator
 
 from unmute.llm.llm_utils import preprocess_messages_for_llm
 from unmute.llm.system_prompt import ConstantInstructions, Instructions
+from unmute.llm.tools import tool_registry
 
 ConversationState = Literal["waiting_for_user", "user_speaking", "bot_speaking"]
 
@@ -17,6 +18,7 @@ class Chatbot:
             {"role": "system", "content": ConstantInstructions().make_system_prompt()}
         ]
         self._instructions: Instructions | None = None
+        self.tools_enabled = False
 
     def conversation_state(self) -> ConversationState:
         if not self.chat_history:
@@ -119,3 +121,58 @@ class Chatbot:
             return valid_messages[-1]["content"]
         else:
             return None
+
+
+    def enable_tools(self):
+        """Active le support des outils"""
+        self.tools_enabled = True
+
+    async def process_ollama_with_tools(self, ollama_stream: Any) -> AsyncIterator[str]:
+        """Traite une conversation avec outils pour Ollama"""
+        messages = self.preprocessed_messages()
+        
+        if not self.tools_enabled:
+            # Comportement standard
+            async for delta in ollama_stream.chat_completion(messages):
+                yield delta
+            return
+        
+        # Boucle pour gérer les appels d'outils multiples
+        while True:
+            has_tool_calls = False
+            
+            async for chunk in ollama_stream.chat_completion_with_tools(
+                messages, 
+                tool_registry.tool_definitions
+            ):
+                if chunk["type"] == "content":
+                    yield chunk["content"]
+                
+                elif chunk["type"] == "tool_calls":
+                    has_tool_calls = True
+                    
+                    # Ajouter le message assistant avec tool_calls
+                    self.chat_history.append({
+                        "role": "assistant",
+                        "content": "",
+                        "tool_calls": chunk["tool_calls"]
+                    })
+                    
+                    # Exécuter chaque outil
+                    for tool_call in chunk["tool_calls"]:
+                        result = await tool_registry.execute_tool(tool_call)
+                        
+                        # Ajouter le résultat comme message tool
+                        self.chat_history.append({
+                            "role": "tool",
+                            "content": result,
+                            "tool_call_id": tool_call.get("id", "unknown")
+                        })
+                    
+                    # Mettre à jour les messages pour le prochain appel
+                    messages = self.preprocessed_messages()
+                    break  # Sortir de la boucle async for
+            
+            # Si pas d'appels d'outils, on a fini
+            if not has_tool_calls:
+                break

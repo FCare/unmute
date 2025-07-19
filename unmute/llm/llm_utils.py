@@ -213,6 +213,9 @@ class VLLMStream:
                 logging.info(f"TEXT CHUNK: {repr(chunk_content)}")
                 if chunk_content != cleaned_content:
                     logging.info(f"TEXT CLEANING - EMOJI SUPPRIMÉ: {repr(chunk_content)} → {repr(cleaned_content)}")
+                
+                if cleaned_content:
+                    yield cleaned_content
 
 
 class OllamaStream:
@@ -236,6 +239,7 @@ class OllamaStream:
             "model": self.model,
             "messages": messages,
             "stream": True,
+            "keep_alive": -1,  # Garde le modèle en mémoire indéfiniment
             "options": {
                 "temperature": self.temperature
             }
@@ -273,6 +277,65 @@ class OllamaStream:
                                     yield cleaned_content
                     except json.JSONDecodeError:
                         continue
+    async def chat_completion_with_tools(
+        self, 
+        messages: list[dict[str, str]], 
+        tools: list[dict]
+    ) -> AsyncIterator[dict]:
+        """Chat completion avec support des outils Ollama"""
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": True,
+            "keep_alive": -1,  # Garde le modèle en mémoire indéfiniment
+            "tools": tools,  # Support natif Ollama
+            "options": {
+                "temperature": self.temperature
+            }
+        }
+        
+        if not KYUTAI_LLM_THINK:
+            payload["think"] = False
+            
+        logging.info(f"OLLAMA TOOLS PAYLOAD: {payload}")
+        
+        async with self.client.stream(
+            "POST",
+            "/api/chat",
+            json=payload,
+            headers={"Content-Type": "application/json"}
+        ) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if line.strip():
+                    try:
+                        data = json.loads(line)
+                        if "message" in data:
+                            message = data["message"]
+                            
+                            # Contenu texte normal
+                            if "content" in message and message["content"]:
+                                cleaned_content = clean_text_for_tts(message["content"])
+                                logging.info(f"OLLAMA TOOLS TEXT CHUNK: {repr(message['content'])}")
+                                if message["content"] != cleaned_content:
+                                    logging.info(f"OLLAMA TOOLS TEXT CLEANING: {repr(message['content'])} → {repr(cleaned_content)}")
+                                
+                                if cleaned_content:
+                                    yield {
+                                        "type": "content",
+                                        "content": cleaned_content
+                                    }
+                            
+                            # Appels d'outils
+                            if "tool_calls" in message and message["tool_calls"]:
+                                logging.info(f"OLLAMA TOOL CALLS: {message['tool_calls']}")
+                                yield {
+                                    "type": "tool_calls",
+                                    "tool_calls": message["tool_calls"]
+                                }
+                    except json.JSONDecodeError:
+                        continue
+
 
     async def __aenter__(self):
         return self
