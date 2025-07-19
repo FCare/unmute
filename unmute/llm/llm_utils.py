@@ -224,7 +224,7 @@ class OllamaStream:
         temperature: float = 1.0,
     ):
         self.server_url = server_url
-        self.client = httpx.AsyncClient(base_url=server_url)
+        self.client = httpx.AsyncClient(base_url=server_url, timeout=60.0)
         self.model = autoselect_model_ollama()
         self.temperature = temperature
 

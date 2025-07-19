@@ -118,6 +118,7 @@ services:
     environment:
       - OLLAMA_HOST=0.0.0.0:11434
       - KYUTAI_LLM_MODEL=${KYUTAI_LLM_MODEL:-llama3.2:3b}
+      - OLLAMA_NUM_PARALLEL=3
     ports:
       - "11434:11434"  # Port 11434 externe et interne (default Ollama port)
     deploy:
