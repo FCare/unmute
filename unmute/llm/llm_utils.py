@@ -18,21 +18,104 @@ INTERRUPTION_CHAR = "—"  # em-dash
 USER_SILENCE_MARKER = "..."
 
 
+class StreamingTextCleaner:
+    """Nettoyeur de texte avec état pour streaming token-par-token.
+    
+    Gère les suppressions en temps réel :
+    - Les emojis qui causent des artefacts TTS
+    - Le contenu entre parenthèses () via état "in_parentheses"
+    - Le contenu entre crochets [] via état "in_brackets"
+    - Le contenu entre chevrons <> via état "in_chevrons"
+    """
+    
+    def __init__(self):
+        self.in_parentheses = 0  # Compteur pour parenthèses imbriquées
+        self.in_brackets = 0     # Compteur pour crochets imbriqués
+        self.in_chevrons = 0     # Compteur pour chevrons imbriqués
+        
+        # Pattern emoji (garde l'existant)
+        self.emoji_pattern = re.compile(
+            "["
+            "\U0001F600-\U0001F64F"  # emoticons
+            "\U0001F300-\U0001F5FF"  # symbols & pictographs
+            "\U0001F680-\U0001F6FF"  # transport & map symbols
+            "\U0001F1E0-\U0001F1FF"  # flags (iOS)
+            "\U00002702-\U000027B0"  # dingbats
+            "\U000024C2-\U0001F251"  # enclosed characters
+            "]+",
+            flags=re.UNICODE
+        )
+    
+    def clean_token(self, token: str) -> str:
+        """Nettoie un token en gardant l'état des ouvertures/fermetures"""
+        
+        # Supprimer les emojis en premier
+        token = self.emoji_pattern.sub('', token)
+        if not token:
+            return ""
+        
+        result = ""
+        i = 0
+        
+        while i < len(token):
+            char = token[i]
+            
+            # Gestion des parenthèses
+            if char == '(':
+                self.in_parentheses += 1
+                # Ne pas inclure le caractère d'ouverture
+            elif char == ')':
+                if self.in_parentheses > 0:
+                    self.in_parentheses -= 1
+                    # Ne pas inclure le caractère de fermeture
+                else:
+                    # Parenthèse fermante sans ouverture, la garder
+                    result += char
+            
+            # Gestion des crochets
+            elif char == '[':
+                self.in_brackets += 1
+                # Ne pas inclure le caractère d'ouverture
+            elif char == ']':
+                if self.in_brackets > 0:
+                    self.in_brackets -= 1
+                    # Ne pas inclure le caractère de fermeture
+                else:
+                    # Crochet fermant sans ouverture, le garder
+                    result += char
+            
+            # Gestion des chevrons
+            elif char == '<':
+                self.in_chevrons += 1
+                # Ne pas inclure le caractère d'ouverture
+            elif char == '>':
+                if self.in_chevrons > 0:
+                    self.in_chevrons -= 1
+                    # Ne pas inclure le caractère de fermeture
+                else:
+                    # Chevron fermant sans ouverture, le garder
+                    result += char
+            
+            # Caractère normal
+            else:
+                # Inclure seulement si on n'est dans aucune structure à supprimer
+                if (self.in_parentheses == 0 and
+                    self.in_brackets == 0 and
+                    self.in_chevrons == 0):
+                    result += char
+                # Sinon le caractère est supprimé (on est dans une structure)
+            
+            i += 1
+        
+        return result
+
+
+# Instance globale réutilisée pour maintenir l'état entre tokens
+_text_cleaner = StreamingTextCleaner()
+
 def clean_text_for_tts(text: str) -> str:
-    """Supprime uniquement les emojis qui causent des artefacts TTS"""
-    # Supprimer les emojis (caractères Unicode dans les plages d'emojis)
-    emoji_pattern = re.compile(
-        "["
-        "\U0001F600-\U0001F64F"  # emoticons
-        "\U0001F300-\U0001F5FF"  # symbols & pictographs
-        "\U0001F680-\U0001F6FF"  # transport & map symbols
-        "\U0001F1E0-\U0001F1FF"  # flags (iOS)
-        "\U00002702-\U000027B0"  # dingbats
-        "\U000024C2-\U0001F251"  # enclosed characters
-        "]+",
-        flags=re.UNICODE
-    )
-    return emoji_pattern.sub('', text)
+    """Interface de compatibilité qui utilise le nettoyeur avec état"""
+    return _text_cleaner.clean_token(text)
 
 
 def preprocess_messages_for_llm(
