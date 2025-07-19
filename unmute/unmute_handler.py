@@ -222,7 +222,7 @@ class UnmuteHandler(AsyncStreamHandler):
         mt.VLLM_ACTIVE_SESSIONS.inc()
 
         try:
-            async for delta in rechunk_to_words(llm.chat_completion(messages)):  # type: ignore
+            async for delta in rechunk_to_words(self.chatbot.process_ollama_with_tools(llm)):  # type: ignore
                 await self.output_queue.put(
                     ora.UnmuteResponseTextDeltaReady(delta=delta)
                 )
