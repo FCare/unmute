@@ -99,6 +99,7 @@ class UnmuteHandler(AsyncStreamHandler):
         self.tts_output_stopwatch = Stopwatch()
 
         self.chatbot = Chatbot()
+        self.chatbot.enable_tools()  # Active le support des outils
         self.openai_client = get_openai_client()
 
         self.turn_transition_lock = asyncio.Lock()
