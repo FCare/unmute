@@ -19,7 +19,14 @@ USER_SILENCE_MARKER = "..."
 
 
 def clean_text_for_tts(text: str) -> str:
-    """Supprime uniquement les emojis qui causent des artefacts TTS"""
+    """Nettoie le texte pour optimiser la synthèse vocale.
+    
+    Supprime :
+    - Les emojis qui causent des artefacts TTS
+    - Le contenu entre parenthèses () - souvent des annotations
+    - Le contenu entre crochets [] - souvent des métadonnées
+    - Le contenu entre chevrons <> - souvent des balises/instructions
+    """
     # Supprimer les emojis (caractères Unicode dans les plages d'emojis)
     emoji_pattern = re.compile(
         "["
@@ -32,7 +39,27 @@ def clean_text_for_tts(text: str) -> str:
         "]+",
         flags=re.UNICODE
     )
-    return emoji_pattern.sub('', text)
+    text = emoji_pattern.sub('', text)
+    
+    # Supprimer le contenu entre parenthèses (annotations, explications)
+    # Ex: "Bonjour (je suis content)" → "Bonjour "
+    text = re.sub(r'\([^)]*\)', '', text)
+    
+    # Supprimer le contenu entre crochets (métadonnées, références)
+    # Ex: "Il fait beau [source: météo]" → "Il fait beau "
+    text = re.sub(r'\[[^\]]*\]', '', text)
+    
+    # Supprimer le contenu entre chevrons (balises, instructions)
+    # Ex: "Salut <en anglais>" → "Salut "
+    text = re.sub(r'<[^>]*>', '', text)
+    
+    # Nettoyer les espaces multiples créés par les suppressions
+    text = re.sub(r'\s+', ' ', text)
+    
+    # Nettoyer les espaces en début/fin
+    text = text.strip()
+    
+    return text
 
 
 def preprocess_messages_for_llm(
