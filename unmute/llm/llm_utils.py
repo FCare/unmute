@@ -10,7 +10,7 @@ from openai import AsyncOpenAI, OpenAI
 
 from unmute.kyutai_constants import LLM_SERVER
 
-from ..kyutai_constants import KYUTAI_LLM_MODEL, KYUTAI_LLM_API_KEY
+from ..kyutai_constants import KYUTAI_LLM_MODEL, KYUTAI_LLM_API_KEY, KYUTAI_LLM_THINK
 
 INTERRUPTION_CHAR = "—"  # em-dash
 USER_SILENCE_MARKER = "..."
@@ -167,11 +167,17 @@ class VLLMStream:
     async def chat_completion(
         self, messages: list[dict[str, str]]
     ) -> AsyncIterator[str]:
+        # Paramètres extra pour Ollama
+        extra_body = {}
+        if not KYUTAI_LLM_THINK:
+            extra_body["think"] = False
+            
         stream = await self.client.chat.completions.create(
             model=self.model,
             messages=cast(Any, messages),  # Cast and hope for the best
             stream=True,
             temperature=self.temperature,
+            extra_body=extra_body,
         )
 
         async with stream:
