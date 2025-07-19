@@ -112,12 +112,11 @@ services:
     build:
       context: services/ollama
       dockerfile: Dockerfile
-      args:
-        MODEL_NAME: ${KYUTAI_LLM_MODEL:-llama3.2:3b}
     volumes:
       - ./volumes/ollama:/root/.ollama
     environment:
       - OLLAMA_HOST=0.0.0.0:11434
+      - KYUTAI_LLM_MODEL=${KYUTAI_LLM_MODEL:-llama3.2:3b}
     ports:
       - "11434:11434"  # Port 11434 externe et interne (default Ollama port)
     deploy:
