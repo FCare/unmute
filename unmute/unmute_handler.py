@@ -154,9 +154,10 @@ class UnmuteHandler(AsyncStreamHandler):
             GradioUpdate(
                 chat_history=[
                     # Not trying to hide the system prompt, just making it less verbose
-                    m
+                    {k: v for k, v in m.items() if k in ["role", "content"]}
                     for m in self.chatbot.chat_history
-                    if m["role"] != "system"
+                    if m["role"] not in ["system", "tool"]
+                    and not (m["role"] == "assistant" and "tool_calls" in m and not m.get("content", "").strip())
                 ],
                 debug_dict=self.debug_dict,
                 debug_plot_data=[],
