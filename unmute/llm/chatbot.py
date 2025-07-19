@@ -160,7 +160,9 @@ class Chatbot:
                     
                     # Exécuter chaque outil
                     for tool_call in chunk["tool_calls"]:
+                        logger.info(f"🔧 TOOL CALL: {tool_call}")
                         result = await tool_registry.execute_tool(tool_call)
+                        logger.info(f"🔧 TOOL RESULT: {result}")
                         
                         # Ajouter le résultat comme message tool
                         self.chat_history.append({

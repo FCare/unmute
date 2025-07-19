@@ -49,7 +49,9 @@ class ToolRegistry:
         function_name = tool_call["function"]["name"]
         
         if function_name not in self.tools:
-            return f"Erreur: outil '{function_name}' non trouvé"
+            error_msg = f"Erreur: outil '{function_name}' non trouvé"
+            logger.error(f"🔧 TOOL ERROR: {error_msg}")
+            return error_msg
         
         try:
             # Ollama peut passer les arguments comme string ou dict
@@ -58,12 +60,26 @@ class ToolRegistry:
                 args = json.loads(arguments)
             else:
                 args = arguments
-                
+            
+            logger.info(f"🔧 EXECUTING TOOL: {function_name}")
+            logger.info(f"🔧 TOOL ARGS: {args}")
+            
             result = await self.tools[function_name].execute(**args)
-            return str(result)
+            
+            # Tronquer le résultat pour les logs si trop long
+            result_str = str(result)
+            if len(result_str) > 500:
+                result_preview = result_str[:200] + "..." + result_str[-200:]
+                logger.info(f"🔧 TOOL SUCCESS: {function_name} → {result_preview} (truncated)")
+            else:
+                logger.info(f"🔧 TOOL SUCCESS: {function_name} → {result_str}")
+            
+            return result_str
         except Exception as e:
-            logger.error(f"Erreur lors de l'exécution de {function_name}: {e}")
-            return f"Erreur lors de l'exécution de {function_name}: {e}"
+            error_msg = f"Erreur lors de l'exécution de {function_name}: {e}"
+            logger.error(f"🔧 TOOL ERROR: {error_msg}")
+            logger.exception(f"🔧 TOOL EXCEPTION: {function_name}")
+            return error_msg
 
 # Instance globale
 tool_registry = ToolRegistry()
