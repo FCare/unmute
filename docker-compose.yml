@@ -10,7 +10,6 @@ services:
       # HTTP and HTTPS entrypoints
       - "--entrypoints.web.address=:80"
       - "--entrypoints.websecure.address=:443"
-      - "--providers.docker.tls.insecureskipverify=true"
     ports:
       - "80:80"
       - "443:443"
