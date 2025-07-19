@@ -172,6 +172,19 @@ class VLLMStream:
         if not KYUTAI_LLM_THINK:
             extra_body["think"] = False
             
+        # Reconstituer le payload JSON qui sera envoyé à Ollama
+        # Via l'endpoint /v1/chat/completions (OpenAI compatible)
+        json_payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": True,
+            "temperature": self.temperature,
+        }
+        # Les paramètres extra_body sont fusionnés au niveau racine par OpenAI client
+        json_payload.update(extra_body)
+        
+        logging.info(f"JSON PAYLOAD TO OLLAMA /v1/chat/completions: {json_payload}")
+            
         stream = await self.client.chat.completions.create(
             model=self.model,
             messages=cast(Any, messages),  # Cast and hope for the best
