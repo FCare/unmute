@@ -30,7 +30,7 @@ from unmute.llm.chatbot import Chatbot
 from unmute.llm.llm_utils import (
     INTERRUPTION_CHAR,
     USER_SILENCE_MARKER,
-    VLLMStream,
+    create_llm_stream,
     get_openai_client,
     rechunk_to_words,
 )
@@ -197,10 +197,9 @@ class UnmuteHandler(AsyncStreamHandler):
         llm_stopwatch = Stopwatch()
 
         quest = await self.start_up_tts(generating_message_i)
-        llm = VLLMStream(
+        llm = create_llm_stream(
             # if generating_message_i is 2, then we have a system prompt + an empty
             # assistant message signalling that we are generating a response.
-            self.openai_client,
             temperature=FIRST_MESSAGE_TEMPERATURE
             if generating_message_i == 2
             else FURTHER_MESSAGES_TEMPERATURE,
@@ -222,7 +221,7 @@ class UnmuteHandler(AsyncStreamHandler):
         mt.VLLM_ACTIVE_SESSIONS.inc()
 
         try:
-            async for delta in rechunk_to_words(llm.chat_completion(messages)):
+            async for delta in rechunk_to_words(llm.chat_completion(messages)):  # type: ignore
                 await self.output_queue.put(
                     ora.UnmuteResponseTextDeltaReady(delta=delta)
                 )

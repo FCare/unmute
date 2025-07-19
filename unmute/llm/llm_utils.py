@@ -1,10 +1,12 @@
 import logging
 import os
 import re
+import json
 from copy import deepcopy
 from functools import cache
-from typing import Any, AsyncIterator, Protocol, cast
+from typing import Any, AsyncIterator, AsyncGenerator, Protocol, cast
 
+import httpx
 from mistralai import Mistral
 from openai import AsyncOpenAI, OpenAI
 
@@ -211,6 +213,115 @@ class VLLMStream:
                 logging.info(f"TEXT CHUNK: {repr(chunk_content)}")
                 if chunk_content != cleaned_content:
                     logging.info(f"TEXT CLEANING - EMOJI SUPPRIMÉ: {repr(chunk_content)} → {repr(cleaned_content)}")
-                
-                if cleaned_content:  # Seulement si il reste du contenu après nettoyage
-                    yield cleaned_content
+
+
+class OllamaStream:
+    """Stream pour l'API native Ollama qui supporte le paramètre 'think'"""
+    
+    def __init__(
+        self,
+        server_url: str = LLM_SERVER,
+        temperature: float = 1.0,
+    ):
+        self.server_url = server_url
+        self.client = httpx.AsyncClient(base_url=server_url)
+        self.model = autoselect_model_ollama()
+        self.temperature = temperature
+
+    async def chat_completion(
+        self, messages: list[dict[str, str]]
+    ) -> AsyncIterator[str]:
+        # Format natif Ollama
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": True,
+            "options": {
+                "temperature": self.temperature
+            }
+        }
+        
+        # Le paramètre think va directement à la racine (pas dans options)
+        if not KYUTAI_LLM_THINK:
+            payload["think"] = False
+            
+        logging.info(f"OLLAMA NATIVE API PAYLOAD: {payload}")
+        
+        async with self.client.stream(
+            "POST",
+            "/api/chat",  # API native au lieu de /v1/chat/completions
+            json=payload,
+            headers={"Content-Type": "application/json"}
+        ) as response:
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if line.strip():
+                    try:
+                        data = json.loads(line)
+                        # Format de réponse Ollama différent
+                        if "message" in data and "content" in data["message"]:
+                            content = data["message"]["content"]
+                            if content:
+                                cleaned_content = clean_text_for_tts(content)
+                                
+                                # Logging pour voir tout le texte qui passe
+                                logging.info(f"OLLAMA TEXT CHUNK: {repr(content)}")
+                                if content != cleaned_content:
+                                    logging.info(f"OLLAMA TEXT CLEANING - EMOJI SUPPRIMÉ: {repr(content)} → {repr(cleaned_content)}")
+                                
+                                if cleaned_content:
+                                    yield cleaned_content
+                    except json.JSONDecodeError:
+                        continue
+
+    async def __aenter__(self):
+        return self
+    
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.client.aclose()
+
+
+def is_ollama_server(server_url: str = LLM_SERVER) -> bool:
+    """Détecte si le serveur est un serveur Ollama en testant l'endpoint /api/tags"""
+    try:
+        with httpx.Client(base_url=server_url, timeout=5.0) as client:
+            response = client.get("/api/tags")
+            response.raise_for_status()
+            # Si l'endpoint /api/tags existe et retourne du JSON avec "models", c'est Ollama
+            data = response.json()
+            return "models" in data
+    except Exception:
+        return False
+
+
+@cache
+def autoselect_model_ollama() -> str:
+    """Version spécifique pour Ollama utilisant l'API native"""
+    if KYUTAI_LLM_MODEL is not None:
+        return KYUTAI_LLM_MODEL
+    
+    # Utiliser l'API native Ollama pour lister les modèles
+    try:
+        with httpx.Client(base_url=LLM_SERVER, timeout=10.0) as client:
+            response = client.get("/api/tags")
+            response.raise_for_status()
+            models = response.json()
+            if not models.get("models"):
+                raise ValueError("Aucun modèle disponible sur le serveur Ollama.")
+            if len(models["models"]) != 1:
+                raise ValueError("Il y a plusieurs modèles disponibles. Veuillez en spécifier un.")
+            return models["models"][0]["name"]
+    except Exception as e:
+        logging.error(f"Erreur lors de la récupération des modèles Ollama: {e}")
+        raise
+
+
+def create_llm_stream(temperature: float = 1.0) -> LLMStream:
+    """Factory function pour créer le bon type de stream selon le serveur"""
+    if is_ollama_server():
+        logging.info("Serveur Ollama détecté, utilisation de l'API native")
+        return OllamaStream(server_url=LLM_SERVER, temperature=temperature)  # type: ignore
+    else:
+        logging.info("Serveur non-Ollama détecté, utilisation de l'API OpenAI compatible")
+        client = get_openai_client()
+        return VLLMStream(client=client, temperature=temperature)
