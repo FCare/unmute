@@ -100,7 +100,11 @@ services:
               capabilities: [gpu]
 
   llm:
-    image: ollama/ollama:latest
+    build:
+      context: services/ollama
+      dockerfile: Dockerfile
+      args:
+        MODEL_NAME: ${KYUTAI_LLM_MODEL:-llama3.2:3b}
     volumes:
       - ./volumes/ollama:/root/.ollama
     environment:
