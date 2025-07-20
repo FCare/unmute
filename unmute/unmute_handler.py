@@ -248,7 +248,9 @@ class UnmuteHandler(AsyncStreamHandler):
                 # Compter les messages non-tool ET sans tool_calls pour détecter les vraies interruptions
                 non_tool_non_toolcall_messages = len([
                     m for m in self.chatbot.chat_history
-                    if m["role"] != "tool" and not m.get("tool_calls")
+                    if m["role"] != "tool"
+                    and not m.get("tool_calls")
+                    and not (m["role"] == "assistant" and not m.get("content", "").strip())
                 ])
                 total_messages = len(self.chatbot.chat_history)
                 logger.info(f"🔍 INTERRUPTION CHECK: non_tool_non_toolcall_messages={non_tool_non_toolcall_messages}, generating_message_i={generating_message_i}, total_messages={total_messages}")
