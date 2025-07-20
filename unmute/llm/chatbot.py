@@ -153,12 +153,8 @@ class Chatbot:
                 elif chunk["type"] == "tool_calls":
                     has_tool_calls = True
                     
-                    # Ajouter le message assistant avec tool_calls
-                    self.chat_history.append({
-                        "role": "assistant",
-                        "content": "",
-                        "tool_calls": chunk["tool_calls"]
-                    })
+                    # Ajouter le message original d'Ollama (conforme à l'exemple officiel)
+                    self.chat_history.append(chunk["original_message"])
                     
                     # Exécuter chaque outil
                     for tool_call in chunk["tool_calls"]:

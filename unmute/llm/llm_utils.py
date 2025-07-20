@@ -414,7 +414,8 @@ class OllamaStream:
                                 logging.info(f"OLLAMA TOOL CALLS: {message['tool_calls']}")
                                 yield {
                                     "type": "tool_calls",
-                                    "tool_calls": message["tool_calls"]
+                                    "tool_calls": message["tool_calls"],
+                                    "original_message": message  # Message complet d'Ollama
                                 }
                     except json.JSONDecodeError:
                         continue
