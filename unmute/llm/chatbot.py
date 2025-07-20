@@ -149,8 +149,6 @@ class Chatbot:
                 tool_registry.tool_definitions
             ):
                 if chunk["type"] == "content":
-                    # Désactiver le flag dès qu'on commence à streamer du contenu
-                    self._processing_tools = False
                     yield chunk["content"]
                 
                 elif chunk["type"] == "tool_calls":
@@ -180,6 +178,7 @@ class Chatbot:
             
             # Si pas d'appels d'outils, on a fini
             if not has_tool_calls:
-                # Désactiver le flag de traitement d'outils
-                self._processing_tools = False
                 break
+        
+        # Désactiver le flag après traitement des tools (avant réponse finale)
+        self._processing_tools = False
