@@ -244,7 +244,10 @@ class UnmuteHandler(AsyncStreamHandler):
                     error_from_tts = True
                     raise
 
-                if len(self.chatbot.chat_history) > generating_message_i:
+                # Désactiver détection d'interruption pendant tool calls
+                if hasattr(self.chatbot, '_processing_tools') and self.chatbot._processing_tools:
+                    pass  # Pas de vérification d'interruption pendant tool calls
+                elif len(self.chatbot.chat_history) > generating_message_i:
                     break  # We've been interrupted
 
                 assert isinstance(delta, str)  # make Pyright happy
