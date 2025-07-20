@@ -99,7 +99,7 @@ class UnmuteHandler(AsyncStreamHandler):
         self.tts_output_stopwatch = Stopwatch()
 
         self.chatbot = Chatbot()
-        # self.chatbot.enable_tools()  # DÉSACTIVÉ POUR TESTS - Active le support des outils
+        self.chatbot.enable_tools()  # Active le support des outils avec TTS fixé
         self.openai_client = get_openai_client()
 
         self.turn_transition_lock = asyncio.Lock()
@@ -211,7 +211,17 @@ class UnmuteHandler(AsyncStreamHandler):
         messages = self.chatbot.preprocessed_messages()
 
         self.tts_output_stopwatch = Stopwatch(autostart=False)
-        tts = None
+        
+        # Détection si cette session va utiliser des tools
+        tools_enabled = hasattr(self.chatbot, 'tools_enabled') and self.chatbot.tools_enabled
+        
+        # Si tools activés, connecter TTS immédiatement pour éviter les reconnexions
+        if tools_enabled:
+            logger.info("🔧 TOOLS SESSION: Connexion TTS immédiate pour éviter les reconnexions")
+            self.tts_output_stopwatch.start_if_not_started()
+            tts = await quest.get()
+        else:
+            tts = None
 
         response_words = []
         error_from_tts = False
@@ -255,7 +265,7 @@ class UnmuteHandler(AsyncStreamHandler):
                 assert isinstance(delta, str)  # make Pyright happy
                 
                 # LAZY TTS : Connecter le TTS seulement au premier contenu réel
-                if tts is None:
+                if tts is None and not tools_enabled:
                     logger.info("🔊 LAZY TTS: Premier contenu détecté, connexion TTS...")
                     self.tts_output_stopwatch.start_if_not_started()
                     try:
@@ -267,7 +277,8 @@ class UnmuteHandler(AsyncStreamHandler):
                 # Nettoyer le texte UNIQUEMENT pour le TTS, pas pour l'historique
                 from unmute.llm.llm_utils import clean_text_for_tts
                 cleaned_delta = clean_text_for_tts(delta)
-                await tts.send(cleaned_delta)
+                if tts is not None:
+                    await tts.send(cleaned_delta)
 
             await self.output_queue.put(
                 # The words include the whitespace, so no need to add it here
