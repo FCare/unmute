@@ -19,7 +19,6 @@ class Chatbot:
         ]
         self._instructions: Instructions | None = None
         self.tools_enabled = False
-        self._processing_tools = False  # Flag pour désactiver détection interruption pendant tool calls
 
     def conversation_state(self) -> ConversationState:
         if not self.chat_history:
@@ -153,8 +152,6 @@ class Chatbot:
                 
                 elif chunk["type"] == "tool_calls":
                     has_tool_calls = True
-                    # Activer le flag de traitement d'outils
-                    self._processing_tools = True
                     
                     # Ajouter le message original d'Ollama (conforme à l'exemple officiel)
                     self.chat_history.append(chunk["original_message"])
@@ -179,6 +176,3 @@ class Chatbot:
             # Si pas d'appels d'outils, on a fini
             if not has_tool_calls:
                 break
-        
-        # Désactiver le flag après traitement des tools (avant réponse finale)
-        self._processing_tools = False
