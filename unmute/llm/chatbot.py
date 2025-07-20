@@ -170,7 +170,7 @@ class Chatbot:
                         self.chat_history.append({
                             "role": "tool",
                             "content": result,
-                            "tool_call_id": tool_call["function"].get("name", f"call_{len(self.chat_history)}")
+                            "tool_name": tool_call["function"].get("name", f"call_{len(self.chat_history)}")
                         })
                     
                     # Mettre à jour les messages pour le prochain appel
