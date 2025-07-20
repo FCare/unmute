@@ -238,13 +238,6 @@ class UnmuteHandler(AsyncStreamHandler):
                     mt.VLLM_TTFT.observe(time_to_first_token)
                     logger.info("Sending first word to TTS: %s", delta)
 
-                self.tts_output_stopwatch.start_if_not_started()
-                try:
-                    tts = await quest.get()
-                except Exception:
-                    error_from_tts = True
-                    raise
-
                 # Compter les messages non-tool ET sans tool_calls pour détecter les vraies interruptions
                 non_tool_non_toolcall_messages = len([
                     m for m in self.chatbot.chat_history
@@ -260,6 +253,17 @@ class UnmuteHandler(AsyncStreamHandler):
                     break  # We've been interrupted
 
                 assert isinstance(delta, str)  # make Pyright happy
+                
+                # LAZY TTS : Connecter le TTS seulement au premier contenu réel
+                if tts is None:
+                    logger.info("🔊 LAZY TTS: Premier contenu détecté, connexion TTS...")
+                    self.tts_output_stopwatch.start_if_not_started()
+                    try:
+                        tts = await quest.get()
+                    except Exception:
+                        error_from_tts = True
+                        raise
+                
                 # Nettoyer le texte UNIQUEMENT pour le TTS, pas pour l'historique
                 from unmute.llm.llm_utils import clean_text_for_tts
                 cleaned_delta = clean_text_for_tts(delta)
