@@ -289,16 +289,11 @@ class VLLMStream:
                     # https://github.com/ggml-org/llama.cpp/blob/6491d6e4f1caf0ad2221865b4249ae6938a6308c/tools/server/tests/unit/test_chat_completion.py#L338
                     continue
 
-                # Nettoyer le texte avec la version douce qui préserve le rythme
-                cleaned_content = clean_text_for_tts(chunk_content)
-                
                 # Logging pour voir tout le texte qui passe
                 logging.info(f"TEXT CHUNK: {repr(chunk_content)}")
-                if chunk_content != cleaned_content:
-                    logging.info(f"TEXT CLEANING - EMOJI SUPPRIMÉ: {repr(chunk_content)} → {repr(cleaned_content)}")
                 
-                if cleaned_content:
-                    yield cleaned_content
+                if chunk_content:
+                    yield chunk_content
 
 
 class OllamaStream:
@@ -349,15 +344,10 @@ class OllamaStream:
                         if "message" in data and "content" in data["message"]:
                             content = data["message"]["content"]
                             if content:
-                                cleaned_content = clean_text_for_tts(content)
-                                
                                 # Logging pour voir tout le texte qui passe
                                 logging.info(f"OLLAMA TEXT CHUNK: {repr(content)}")
-                                if content != cleaned_content:
-                                    logging.info(f"OLLAMA TEXT CLEANING - EMOJI SUPPRIMÉ: {repr(content)} → {repr(cleaned_content)}")
                                 
-                                if cleaned_content:
-                                    yield cleaned_content
+                                yield content
                     except json.JSONDecodeError:
                         continue
     async def chat_completion_with_tools(
@@ -398,16 +388,12 @@ class OllamaStream:
                             
                             # Contenu texte normal
                             if "content" in message and message["content"]:
-                                cleaned_content = clean_text_for_tts(message["content"])
                                 logging.info(f"OLLAMA TOOLS TEXT CHUNK: {repr(message['content'])}")
-                                if message["content"] != cleaned_content:
-                                    logging.info(f"OLLAMA TOOLS TEXT CLEANING: {repr(message['content'])} → {repr(cleaned_content)}")
                                 
-                                if cleaned_content:
-                                    yield {
-                                        "type": "content",
-                                        "content": cleaned_content
-                                    }
+                                yield {
+                                    "type": "content",
+                                    "content": message["content"]
+                                }
                             
                             # Appels d'outils
                             if "tool_calls" in message and message["tool_calls"]:

@@ -260,7 +260,10 @@ class UnmuteHandler(AsyncStreamHandler):
                     break  # We've been interrupted
 
                 assert isinstance(delta, str)  # make Pyright happy
-                await tts.send(delta)
+                # Nettoyer le texte UNIQUEMENT pour le TTS, pas pour l'historique
+                from unmute.llm.llm_utils import clean_text_for_tts
+                cleaned_delta = clean_text_for_tts(delta)
+                await tts.send(cleaned_delta)
 
             await self.output_queue.put(
                 # The words include the whitespace, so no need to add it here
