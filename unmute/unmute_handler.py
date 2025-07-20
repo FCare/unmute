@@ -185,6 +185,7 @@ class UnmuteHandler(AsyncStreamHandler):
 
     async def _generate_response_task(self):
         generating_message_i = len(self.chatbot.chat_history)
+        logger.info(f"🔍 DEBUT GENERATION: generating_message_i={generating_message_i}, chat_history_size={len(self.chatbot.chat_history)}")
 
         await self.output_queue.put(
             ora.ResponseCreated(
@@ -246,7 +247,11 @@ class UnmuteHandler(AsyncStreamHandler):
 
                 # Compter les messages non-tool pour détecter les vraies interruptions
                 non_tool_messages = len([m for m in self.chatbot.chat_history if m["role"] != "tool"])
+                total_messages = len(self.chatbot.chat_history)
+                logger.info(f"🔍 INTERRUPTION CHECK: non_tool_messages={non_tool_messages}, generating_message_i={generating_message_i}, total_messages={total_messages}")
+                
                 if non_tool_messages > generating_message_i:
+                    logger.info(f"🚨 INTERRUPTION DETECTED! Breaking streaming loop")
                     break  # We've been interrupted
 
                 assert isinstance(delta, str)  # make Pyright happy
