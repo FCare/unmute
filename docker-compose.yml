@@ -60,6 +60,7 @@ services:
       dockerfile: public.Dockerfile
     environment:
       - HUGGING_FACE_HUB_TOKEN=$HUGGING_FACE_HUB_TOKEN
+      - CUDA_COMPUTE_CAP=120
     volumes:
       - ./volumes/cargo-registry-tts:/root/.cargo/registry
       - ./volumes/tts-target:/app/target

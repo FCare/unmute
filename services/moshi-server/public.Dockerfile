@@ -1,5 +1,5 @@
 # This is the public-facing version.
-FROM nvidia/cuda:12.1.0-devel-ubuntu22.04 AS base
+FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04 AS base
 
 # Set environment variables to avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
