@@ -68,6 +68,8 @@ services:
     build:
       context: services/moshi-server
       dockerfile: public.Dockerfile
+      args:
+        FORCE_FLOAT_16: "false"
     environment:
       - HUGGING_FACE_HUB_TOKEN=$HUGGING_FACE_HUB_TOKEN
       - CUDA_COMPUTE_CAP=120
@@ -92,6 +94,8 @@ services:
     build:
       context: services/moshi-server
       dockerfile: public.Dockerfile
+      args:
+        FORCE_FLOAT_16: "false"
     environment:
       - HUGGING_FACE_HUB_TOKEN=$HUGGING_FACE_HUB_TOKEN
     volumes:

@@ -1,0 +1,48 @@
+diff -ruN moshi-server-0.6.3/src/asr.rs moshi-server-0.6.3_patched/src/asr.rs
+--- moshi-server-0.6.3/src/asr.rs	2025-08-26 10:41:25.603973374 +0200
++++ moshi-server-0.6.3_patched/src/asr.rs	2025-08-26 10:31:34.332645875 +0200
+@@ -47,7 +47,7 @@
+ 
+ impl Asr {
+     pub fn new(asr: &crate::AsrConfig, config: &crate::Config, dev: &Device) -> Result<Self> {
+-        let dtype = dev.bf16_default_to_f32();
++        let dtype = dev.f16_default_to_f32();
+         let vb_lm =
+             unsafe { VarBuilder::from_mmaped_safetensors(&[&asr.lm_model_file], dtype, dev)? };
+         let lm =
+diff -ruN moshi-server-0.6.3/src/batched_asr.rs moshi-server-0.6.3_patched/src/batched_asr.rs
+--- moshi-server-0.6.3/src/batched_asr.rs	2025-08-26 10:41:25.603973374 +0200
++++ moshi-server-0.6.3_patched/src/batched_asr.rs	2025-08-26 10:31:38.773828711 +0200
+@@ -457,7 +457,7 @@
+         config: &crate::Config,
+         dev: &Device,
+     ) -> Result<Self> {
+-        let dtype = dev.bf16_default_to_f32();
++        let dtype = dev.f16_default_to_f32();
+         let vb_lm =
+             unsafe { VarBuilder::from_mmaped_safetensors(&[&asr.lm_model_file], dtype, dev)? };
+         let lm = moshi::lm::LmModel::batched(
+diff -ruN moshi-server-0.6.3/src/lm.rs moshi-server-0.6.3_patched/src/lm.rs
+--- moshi-server-0.6.3/src/lm.rs	2025-08-26 10:41:25.603973374 +0200
++++ moshi-server-0.6.3_patched/src/lm.rs	2025-08-26 10:31:42.658988654 +0200
+@@ -65,7 +65,7 @@
+ 
+ impl Lm {
+     pub fn new(lm: &crate::LmConfig, config: &crate::Config, dev: &Device) -> Result<Self> {
+-        let dtype = dev.bf16_default_to_f32();
++        let dtype = dev.f16_default_to_f32();
+         let model_config = &lm.model;
+         let gen_config = lm.gen.clone();
+         let audio_tokenizer = moshi::mimi::load(&lm.audio_tokenizer_file, Some(8), dev)?;
+diff -ruN moshi-server-0.6.3/src/tts.rs moshi-server-0.6.3_patched/src/tts.rs
+--- moshi-server-0.6.3/src/tts.rs	2025-08-26 10:41:25.603973374 +0200
++++ moshi-server-0.6.3_patched/src/tts.rs	2025-08-26 10:31:55.740527169 +0200
+@@ -246,7 +246,7 @@
+ 
+ impl Model {
+     pub fn new(tts: &crate::TtsConfig, config: &crate::Config, dev: &Device) -> Result<Self> {
+-        let dtype = dev.bf16_default_to_f32();
++        let dtype = dev.f16_default_to_f32();
+         let model_config = &tts.model;
+         let audio_codebooks = model_config.audio_codebooks;
+         let audio_tokenizer =
