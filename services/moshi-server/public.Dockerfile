@@ -54,7 +54,7 @@ COPY patches/ /tmp/patches/
 RUN if [ "$FORCE_FLOAT_16" = "true" ]; then \
         echo "Applying FORCE_FLOAT_16 patch..." && \
         cd /tmp/moshi && \
-        patch -p1 < /tmp/patches/moshi-server-modifications.patch; \
+        patch -p1 < /tmp/patches/moshi-server-force_f16.patch; \
     else \
         echo "Skipping FORCE_FLOAT_16 patch"; \
     fi
