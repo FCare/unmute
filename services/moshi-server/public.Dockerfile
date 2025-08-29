@@ -47,9 +47,6 @@ RUN git clone https://github.com/kyutai-labs/moshi.git /tmp/moshi && \
     cd /tmp/moshi && \
     git checkout a40c5612ade3496f4e4aa47273964404ba287168
 
-# Copier les patches depuis le contexte de build
-COPY patches/ /tmp/patches/
-
 # Appliquer le patch SEULEMENT si FORCE_FLOAT_16=true
 RUN if [ "$FORCE_FLOAT_16" = "true" ]; then \
         echo "Applying FORCE_FLOAT_16 patch..." && \
