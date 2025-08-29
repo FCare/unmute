@@ -12,6 +12,7 @@ import numpy as np
 import wave
 from pathlib import Path
 import urllib.parse
+from docker_utils import get_tts_container_ip
 
 def url_escape(value) -> str:
     return urllib.parse.quote(str(value), safe="")
@@ -32,12 +33,22 @@ class TTSClientEosMessage:
     def model_dump(self):
         return {"type": self.type}
 
-async def test_perfect_tts(text: str, output_file: str = "perfect_tts_output.wav", host: str = "172.18.0.2", port: int = 8080):
+async def test_perfect_tts(text: str, output_file: str = "perfect_tts_output.wav", host: str = None, port: int = 8080):
     """Test TTS en reproduisant exactement le protocole backend"""
+    
+    # Détection automatique de l'IP si pas fournie
+    if host is None:
+        print("🔍 Détection automatique du conteneur TTS...")
+        host = get_tts_container_ip()
+        if host is None:
+            print("❌ Impossible de trouver le conteneur TTS")
+            print("💡 Essayez avec --host IP_MANUELLE")
+            return False
+        print(f"✅ Conteneur TTS trouvé: {host}")
     
     # Configuration EXACTE du backend Python
     query_params = {
-        "format": "PcmMessagePack",  # ← SECRET ! 
+        "format": "PcmMessagePack",  # ← SECRET !
         "auth_id": "public_token",
         "cfg_alpha": 1.5,  # Comme dans le backend
         "voice": "unmute-prod-website/developpeuse-3.wav"
@@ -302,7 +313,7 @@ def main():
     parser = argparse.ArgumentParser(description="Test TTS Perfect (Backend Protocol)")
     parser.add_argument("text", nargs="?", help="Texte à synthétiser")
     parser.add_argument("--output", "-o", default="perfect_tts_output.wav", help="Fichier de sortie")
-    parser.add_argument("--host", default="172.18.0.2", help="IP du docker TTS")
+    parser.add_argument("--host", default=None, help="IP du docker TTS (auto-détecté si non spécifié)")
     parser.add_argument("--port", type=int, default=8080, help="Port du docker TTS")
     
     args = parser.parse_args()
