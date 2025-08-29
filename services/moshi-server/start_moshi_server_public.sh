@@ -9,6 +9,7 @@ uvx --from 'huggingface_hub[cli]' huggingface-cli login --token $HUGGING_FACE_HU
 # Install PyTorch with CUDA 12.8 support for RTX 5060 Ti (sm_120)
 uv pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
 
+rm -rf /root/.cargo/registry/src/index.crates.io-*/pin-utils-*
 CARGO_TARGET_DIR=/app/target cargo install --features cuda moshi-server@0.6.3
 
 # Subtle detail here: We use the full path to `moshi-server` because there is a `moshi-server` binary
