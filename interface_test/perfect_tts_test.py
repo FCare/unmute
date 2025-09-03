@@ -10,12 +10,32 @@ import msgpack
 import argparse
 import numpy as np
 import wave
+import ssl
 from pathlib import Path
 import urllib.parse
 from docker_utils import get_tts_container_ip
 
 def url_escape(value) -> str:
     return urllib.parse.quote(str(value), safe="")
+
+def build_websocket_url(url=None, host=None, port=None):
+    """Construit l'URL WebSocket selon le mode d'accès (public ou local)"""
+    if url:
+        # Mode domaine public via Traefik
+        protocol = "wss"  # HTTPS par défaut pour domaines publics
+        effective_port = 443 if port is None else port
+        base_path = "/tts"  # Route Traefik
+        if effective_port == 443:
+            return f"{protocol}://{url}{base_path}"
+        else:
+            return f"{protocol}://{url}:{effective_port}{base_path}"
+    else:
+        # Mode local/docker direct
+        protocol = "ws"
+        effective_port = port or 8080
+        effective_host = host or get_tts_container_ip()
+        base_path = "/api/tts_streaming"  # Route directe TTS
+        return f"{protocol}://{effective_host}:{effective_port}{base_path}"
 
 # Messages du protocole backend (reproduits)
 class TTSClientTextMessage:
@@ -33,18 +53,24 @@ class TTSClientEosMessage:
     def model_dump(self):
         return {"type": self.type}
 
-async def test_perfect_tts(text: str, output_file: str = "perfect_tts_output.wav", host: str = None, port: int = 8080):
+async def test_perfect_tts(text: str, output_file: str = "perfect_tts_output.wav", url: str = None, host: str = None, port: int = None):
     """Test TTS en reproduisant exactement le protocole backend"""
     
-    # Détection automatique de l'IP si pas fournie
-    if host is None:
+    # Détection du mode d'accès
+    if url:
+        print(f"🌐 Utilisation du domaine public: {url}")
+        if port is None:
+            port = 443  # Port HTTPS par défaut
+    elif host is None:
         print("🔍 Détection automatique du conteneur TTS...")
         host = get_tts_container_ip()
         if host is None:
             print("❌ Impossible de trouver le conteneur TTS")
-            print("💡 Essayez avec --host IP_MANUELLE")
+            print("💡 Essayez avec --host IP_MANUELLE ou --url DOMAINE")
             return False
         print(f"✅ Conteneur TTS trouvé: {host}")
+        if port is None:
+            port = 8080  # Port par défaut pour accès local
     
     # Configuration EXACTE du backend Python
     query_params = {
@@ -56,7 +82,7 @@ async def test_perfect_tts(text: str, output_file: str = "perfect_tts_output.wav
     
     # URL avec paramètres EXACTEMENT comme le backend
     params_str = "&".join(f"{key}={url_escape(value)}" for key, value in query_params.items())
-    ws_url = f"ws://{host}:{port}/api/tts_streaming?{params_str}"
+    ws_url = f"{build_websocket_url(url, host, port)}?{params_str}"
     
     # Headers EXACTEMENT comme le backend
     headers = {"kyutai-api-key": "public_token"}
@@ -67,7 +93,12 @@ async def test_perfect_tts(text: str, output_file: str = "perfect_tts_output.wav
     print(f"Sortie: {output_file}")
     
     try:
-        async with websockets.connect(ws_url, additional_headers=headers) as websocket:
+        # Configuration SSL pour WSS (domaines publics)
+        ssl_context = None
+        if ws_url.startswith("wss://"):
+            ssl_context = ssl.create_default_context()
+        
+        async with websockets.connect(ws_url, additional_headers=headers, ssl=ssl_context) as websocket:
             print("✅ Connexion WebSocket établie")
             
             # Collecter les chunks audio PCM
@@ -313,13 +344,14 @@ def main():
     parser = argparse.ArgumentParser(description="Test TTS Perfect (Backend Protocol)")
     parser.add_argument("text", nargs="?", help="Texte à synthétiser")
     parser.add_argument("--output", "-o", default="perfect_tts_output.wav", help="Fichier de sortie")
+    parser.add_argument("--url", help="URL publique (ex: caronboulme.freeboxos.fr)")
     parser.add_argument("--host", default=None, help="IP du docker TTS (auto-détecté si non spécifié)")
-    parser.add_argument("--port", type=int, default=8080, help="Port du docker TTS")
+    parser.add_argument("--port", type=int, default=None, help="Port (443 pour URL publique, 8080 pour local)")
     
     args = parser.parse_args()
     
     if args.text:
-        success = asyncio.run(test_perfect_tts(args.text, args.output, args.host, args.port))
+        success = asyncio.run(test_perfect_tts(args.text, args.output, args.url, args.host, args.port))
         if success:
             print(f"\n🎉 Succès parfait! Écoutez le résultat: {args.output}")
         else:
@@ -327,7 +359,7 @@ def main():
     else:
         # Test par défaut
         default_text = "Je suis triste car mon chien est mort"
-        success = asyncio.run(test_perfect_tts(default_text, args.output, args.host, args.port))
+        success = asyncio.run(test_perfect_tts(default_text, args.output, args.url, args.host, args.port))
         if success:
             print(f"\n🎉 Succès parfait! Écoutez le résultat: {args.output}")
 
