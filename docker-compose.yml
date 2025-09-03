@@ -142,7 +142,7 @@ services:
       - "traefik.http.routers.stt.priority=200"
       - "traefik.http.routers.stt.middlewares=stt-path-rewrite"
       - "traefik.http.middlewares.stt-path-rewrite.replacepathregex.regex=^/stt(.*)"
-      - "traefik.http.middlewares.stt-path-rewrite.replacepathregex.replacement=/api/stt_streaming$$1"
+      - "traefik.http.middlewares.stt-path-rewrite.replacepathregex.replacement=/api/asr-streaming$$1"
     deploy:
       resources:
         reservations:
