@@ -9,6 +9,7 @@ import msgpack
 import argparse
 import wave
 import numpy as np
+import ssl
 from pathlib import Path
 from docker_utils import get_stt_container_ip
 
@@ -18,6 +19,25 @@ STT_PATH = "/api/asr-streaming"
 SAMPLE_RATE = 24000
 SAMPLES_PER_FRAME = 1920  # Taille de chunk d'après le backend
 HEADERS = {"kyutai-api-key": "public_token"}
+
+def build_websocket_url(url=None, host=None, port=None):
+    """Construit l'URL WebSocket selon le mode d'accès (public ou local)"""
+    if url:
+        # Mode domaine public via Traefik
+        protocol = "wss"  # HTTPS par défaut pour domaines publics
+        effective_port = 443 if port is None else port
+        base_path = "/stt"  # Route Traefik
+        if effective_port == 443:
+            return f"{protocol}://{url}{base_path}"
+        else:
+            return f"{protocol}://{url}:{effective_port}{base_path}"
+    else:
+        # Mode local/docker direct
+        protocol = "ws"
+        effective_port = port or 8080
+        effective_host = host or get_stt_container_ip()
+        base_path = STT_PATH  # Route directe STT
+        return f"{protocol}://{effective_host}:{effective_port}{base_path}"
 
 def load_wav_file(wav_path: Path) -> np.ndarray:
     """Charge un fichier WAV et le convertit au format requis"""
@@ -72,21 +92,27 @@ def load_wav_file(wav_path: Path) -> np.ndarray:
         print(f"  ✅ Format final: {len(audio_np)} échantillons, {len(audio_np)/SAMPLE_RATE:.2f}s")
         return audio_np.astype(np.float32)
 
-async def stream_stt_transcription(wav_path: Path, host: str = None, port: int = 8080):
+async def stream_stt_transcription(wav_path: Path, url: str = None, host: str = None, port: int = None):
     """Envoie un fichier WAV et reçoit la transcription en streaming"""
     
-    # Détection automatique de l'IP si pas fournie
-    if host is None:
+    # Détection du mode d'accès
+    if url:
+        print(f"🌐 Utilisation du domaine public: {url}")
+        if port is None:
+            port = 443  # Port HTTPS par défaut
+    elif host is None:
         print("🔍 Détection automatique du conteneur STT...")
         host = get_stt_container_ip()
         if host is None:
             print("❌ Impossible de trouver le conteneur STT")
-            print("💡 Essayez avec --host IP_MANUELLE")
+            print("💡 Essayez avec --host IP_MANUELLE ou --url DOMAINE")
             return False
         print(f"✅ Conteneur STT trouvé: {host}")
+        if port is None:
+            port = 8080  # Port par défaut pour accès local
     
     # URL WebSocket
-    ws_url = f"ws://{host}:{port}{STT_PATH}"
+    ws_url = build_websocket_url(url, host, port)
     
     print(f"🎤 STT Streaming")
     print(f"Fichier: {wav_path}")
@@ -101,7 +127,12 @@ async def stream_stt_transcription(wav_path: Path, host: str = None, port: int =
         return False
     
     try:
-        async with websockets.connect(ws_url, additional_headers=HEADERS) as websocket:
+        # Configuration SSL pour WSS (domaines publics)
+        ssl_context = None
+        if ws_url.startswith("wss://"):
+            ssl_context = ssl.create_default_context()
+        
+        async with websockets.connect(ws_url, additional_headers=HEADERS, ssl=ssl_context) as websocket:
             print("✅ Connexion WebSocket établie")
             
             # Variables pour la transcription
@@ -248,8 +279,9 @@ async def stream_stt_transcription(wav_path: Path, host: str = None, port: int =
 def main():
     parser = argparse.ArgumentParser(description="Test STT Streaming avec fichier WAV")
     parser.add_argument("wav_file", type=Path, help="Fichier WAV à transcrire")
+    parser.add_argument("--url", help="URL publique (ex: caronboulme.freeboxos.fr)")
     parser.add_argument("--host", default=None, help="IP du serveur STT (auto-détecté si non spécifié)")
-    parser.add_argument("--port", type=int, default=8080, help="Port du serveur STT")
+    parser.add_argument("--port", type=int, default=None, help="Port (443 pour URL publique, 8080 pour local)")
     
     args = parser.parse_args()
     
@@ -261,7 +293,7 @@ def main():
         print(f"❌ Format non supporté: {args.wav_file.suffix} (utilisez .wav)")
         return
     
-    success = asyncio.run(stream_stt_transcription(args.wav_file, args.host, args.port))
+    success = asyncio.run(stream_stt_transcription(args.wav_file, args.url, args.host, args.port))
     
     if success:
         print(f"\n🎉 Transcription réussie!")
