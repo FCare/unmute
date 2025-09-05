@@ -2,7 +2,7 @@
 # This is the public-facing version.
 set -ex
 
-export FORCE_FLOAT_16=true
+export FORCE_FLOAT_16=${FORCE_FLOAT_16:-true}
 
 export LD_LIBRARY_PATH=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')
 
