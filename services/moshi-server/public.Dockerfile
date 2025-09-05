@@ -2,7 +2,7 @@
 FROM nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04 AS base
 
 # Argument de build conditionnel pour appliquer le patch FORCE_FLOAT_16
-ARG FORCE_FLOAT_16=false
+ARG FORCE_FLOAT_16=true
 
 # Set environment variables to avoid interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive
@@ -44,15 +44,6 @@ RUN wget https://raw.githubusercontent.com/kyutai-labs/moshi/a40c5612ade3496f4e4
 RUN git clone https://github.com/kyutai-labs/moshi.git /tmp/moshi && \
     cd /tmp/moshi && \
     git checkout a40c5612ade3496f4e4aa47273964404ba287168
-
-# Appliquer le patch SEULEMENT si FORCE_FLOAT_16=true
-RUN if [ "$FORCE_FLOAT_16" = "true" ]; then \
-        echo "Applying FORCE_FLOAT_16 patch..." && \
-        cd /tmp/moshi/rust/moshi-server && \
-        patch -p0 < /tmp/patches/moshi-server-force_f16.patch; \
-    else \
-        echo "Skipping FORCE_FLOAT_16 patch"; \
-    fi
 
 # Copier les sources (patchées ou non)
 RUN cp -r /tmp/moshi/rust/moshi-server ./moshi-server

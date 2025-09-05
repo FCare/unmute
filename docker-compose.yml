@@ -15,7 +15,7 @@ services:
       # Let's Encrypt configuration
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencrypt.acme.email=francois.Caron.perso@gmail.com"
+      - "--certificatesresolvers.letsencrypt.acme.email=francois.caron.perso@gmail.com"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
       
       # HTTP to HTTPS redirection
@@ -40,7 +40,7 @@ services:
       dockerfile: Dockerfile
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`caronboulme.freeboxos.fr`)"
+      - "traefik.http.routers.frontend.rule=Host(`caronboulme.fr`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
       - "traefik.http.services.frontend.loadbalancer.server.port=3000"
@@ -70,7 +70,7 @@ services:
       - NEWSAPI_API_KEY=$NEWSAPI_API_KEY
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`caronboulme.freeboxos.fr`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.rule=Host(`caronboulme.fr`) && PathPrefix(`/api`)"
       - "traefik.http.routers.backend.middlewares=strip-api"
       - "traefik.http.middlewares.strip-api.replacepathregex.regex=^/api/(.*)"
       - "traefik.http.middlewares.strip-api.replacepathregex.replacement=/$$1"
@@ -88,7 +88,7 @@ services:
       context: services/moshi-server
       dockerfile: public.Dockerfile
       args:
-        FORCE_FLOAT_16: "false"
+        FORCE_FLOAT_16: "true"
     environment:
       - HUGGING_FACE_HUB_TOKEN=$HUGGING_FACE_HUB_TOKEN
       - CUDA_COMPUTE_CAP=120
@@ -100,7 +100,7 @@ services:
       - ./volumes/tts-logs:/logs
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.tts.rule=Host(`caronboulme.freeboxos.fr`) && PathPrefix(`/tts`)"
+      - "traefik.http.routers.tts.rule=Host(`caronboulme.fr`) && PathPrefix(`/tts`)"
       - "traefik.http.routers.tts.entrypoints=websecure"
       - "traefik.http.routers.tts.tls.certresolver=letsencrypt"
       - "traefik.http.services.tts.loadbalancer.server.port=8080"
@@ -124,7 +124,7 @@ services:
       context: services/moshi-server
       dockerfile: public.Dockerfile
       args:
-        FORCE_FLOAT_16: "false"
+        FORCE_FLOAT_16: "true"
     environment:
       - HUGGING_FACE_HUB_TOKEN=$HUGGING_FACE_HUB_TOKEN
     volumes:
@@ -135,7 +135,7 @@ services:
       - ./volumes/stt-logs:/logs
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.stt.rule=Host(`caronboulme.freeboxos.fr`) && PathPrefix(`/stt`)"
+      - "traefik.http.routers.stt.rule=Host(`caronboulme.fr`) && PathPrefix(`/stt`)"
       - "traefik.http.routers.stt.entrypoints=websecure"
       - "traefik.http.routers.stt.tls.certresolver=letsencrypt"
       - "traefik.http.services.stt.loadbalancer.server.port=8080"
