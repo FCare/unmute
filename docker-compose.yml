@@ -7,6 +7,8 @@ services:
       # Swarm provider configuration
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/logs/access.log"
 
       # HTTP and HTTPS entrypoints
       - "--entrypoints.web.address=:80"
@@ -31,6 +33,7 @@ services:
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "./letsencrypt:/letsencrypt"
+      - "/var/log/traefik:/logs"
 
   frontend:
     image: unmute-frontend:latest
@@ -128,6 +131,7 @@ services:
         FORCE_FLOAT_16: "true"
     environment:
       - HUGGING_FACE_HUB_TOKEN=$HUGGING_FACE_HUB_TOKEN
+      - CUDA_COMPUTE_CAP=120
       - FORCE_FLOAT_16=${STT_FORCE_FLOAT16}
     volumes:
       - ./volumes/cargo-registry-stt:/root/.cargo/registry
