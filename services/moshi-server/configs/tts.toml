@@ -8,7 +8,7 @@ type = "Py"
 path = "/api/tts_streaming"
 text_tokenizer_file = "hf://kyutai/tts-1.6b-en_fr/tokenizer_spm_8k_en_fr_audio.model"
 # A higher batch size allows you to serve more users at once, but with a higher latency and memory usage.
-batch_size = 1
+batch_size = 4
 text_bos_token = 1
 
 [modules.tts_py.py]
@@ -18,9 +18,10 @@ log_folder = "/tmp/unmute_logs"
 # on the project page too and for that we want to load the other voices as well
 #voice_folder = "hf-snapshot://kyutai/tts-voices/**/*.safetensors"
 #default_voice = "unmute-prod-website/default_voice.wav"
-voice_folder = "hf-snapshot://kyutai/tts-voices/unmute-prod-website/developpeuse-3.*.safetensors"
-default_voice = "unmute-prod-website/developpeuse-3.wav"
-
+#voice_folder = "hf-snapshot://kyutai/tts-voices/unmute-prod-website/developpeuse-3.*.safetensors"
+#default_voice = "unmute-prod-website/developpeuse-3.wav"
+voice_folder = "hf-snapshot://kyutai/tts-voices/cml-tts/fr/12977_10625_000037-0001.*.safetensors"
+default_voice = "cml-tts/fr/12977_10625_000037-0001.wav"
 cfg_coef = 2.0
 cfg_is_no_text = true
 padding_between = 1

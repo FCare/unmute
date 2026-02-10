@@ -1,88 +1,5 @@
 # See NOTE comments for places to modify.
 services:
-  traefik:
-    image: traefik:v3.3.1
-    restart: unless-stopped
-    command:
-      # Swarm provider configuration
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--accesslog=true"
-      - "--accesslog.filepath=/logs/access.log"
-
-      # HTTP and HTTPS entrypoints
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      
-      # Let's Encrypt configuration
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencrypt.acme.email=francois.caron.perso@gmail.com"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-      
-      # HTTP to HTTPS redirection
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      
-      # Debug logging
-      - "--log.level=DEBUG"
-      - "--accesslog=true"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock:ro"
-      - "./letsencrypt:/letsencrypt"
-      - "/var/log/traefik:/logs"
-
-  frontend:
-    image: unmute-frontend:latest
-    restart: unless-stopped
-    build:
-      context: frontend/
-      dockerfile: Dockerfile
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`caronboulme.fr`)"
-      - "traefik.http.routers.frontend.entrypoints=websecure"
-      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.frontend.loadbalancer.server.port=3000"
-      - "traefik.http.routers.frontend.priority=10" # lowest priority
-      - "traefik.http.middlewares.secure-headers.headers.forcestsheader=true"
-      - "traefik.http.middlewares.secure-headers.headers.sslredirect=true"
-      - "traefik.http.middlewares.secure-headers.headers.stsincludesubdomains=true"
-      - "traefik.http.middlewares.secure-headers.headers.stspreload=true"
-      - "traefik.http.middlewares.secure-headers.headers.stsseconds=31536000"
-      - "traefik.http.routers.frontend.middlewares=secure-headers"
-
-  backend:
-    image: unmute-backend:latest
-    restart: unless-stopped
-    build:
-      context: ./
-      target: hot-reloading
-    volumes:
-      - ./unmute:/app/unmute
-    environment:
-      - KYUTAI_STT_URL=ws://stt:8080
-      - KYUTAI_TTS_URL=ws://tts:8080
-      - KYUTAI_LLM_URL=http://llm:11434
-      - KYUTAI_LLM_MODEL=${KYUTAI_LLM_MODEL:-llama3.2:3b}
-      - KYUTAI_LLM_THINK=${KYUTAI_LLM_THINK:-false}
-      - KYUTAI_LLM_API_KEY=ollama
-      - NEWSAPI_API_KEY=$NEWSAPI_API_KEY
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`caronboulme.fr`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.backend.middlewares=strip-api"
-      - "traefik.http.middlewares.strip-api.replacepathregex.regex=^/api/(.*)"
-      - "traefik.http.middlewares.strip-api.replacepathregex.replacement=/$$1"
-      - "traefik.http.routers.backend.entrypoints=websecure"
-      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
-      - "traefik.http.services.backend.loadbalancer.server.port=80"
-      - "traefik.http.routers.backend.priority=100" # higher priority than frontend
-      - "prometheus-port=80"
-
   tts:
     image: moshi-server:latest
     restart: unless-stopped
@@ -91,7 +8,7 @@ services:
       context: services/moshi-server
       dockerfile: public.Dockerfile
       args:
-        FORCE_FLOAT_16: "true"
+        FORCE_FLOAT_16: "false"
     environment:
       - HUGGING_FACE_HUB_TOKEN=$HUGGING_FACE_HUB_TOKEN
       - CUDA_COMPUTE_CAP=120
@@ -102,16 +19,8 @@ services:
       - ./volumes/uv-cache:/root/.cache/uv
       - /tmp/models/:/models
       - ./volumes/tts-logs:/logs
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.tts.rule=Host(`caronboulme.fr`) && PathPrefix(`/tts`)"
-      - "traefik.http.routers.tts.entrypoints=websecure"
-      - "traefik.http.routers.tts.tls.certresolver=letsencrypt"
-      - "traefik.http.services.tts.loadbalancer.server.port=8080"
-      - "traefik.http.routers.tts.priority=200"
-      - "traefik.http.routers.tts.middlewares=tts-path-rewrite"
-      - "traefik.http.middlewares.tts-path-rewrite.replacepathregex.regex=^/tts(.*)"
-      - "traefik.http.middlewares.tts-path-rewrite.replacepathregex.replacement=/api/tts_streaming$$1"
+    networks:
+      - ansible
     deploy:
       resources:
         reservations:
@@ -128,7 +37,7 @@ services:
       context: services/moshi-server
       dockerfile: public.Dockerfile
       args:
-        FORCE_FLOAT_16: "true"
+        FORCE_FLOAT_16: "false"
     environment:
       - HUGGING_FACE_HUB_TOKEN=$HUGGING_FACE_HUB_TOKEN
       - CUDA_COMPUTE_CAP=120
@@ -139,16 +48,8 @@ services:
       - ./volumes/uv-cache:/root/.cache/uv
       - /tmp/models/:/models
       - ./volumes/stt-logs:/logs
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.stt.rule=Host(`caronboulme.fr`) && PathPrefix(`/stt`)"
-      - "traefik.http.routers.stt.entrypoints=websecure"
-      - "traefik.http.routers.stt.tls.certresolver=letsencrypt"
-      - "traefik.http.services.stt.loadbalancer.server.port=8080"
-      - "traefik.http.routers.stt.priority=200"
-      - "traefik.http.routers.stt.middlewares=stt-path-rewrite"
-      - "traefik.http.middlewares.stt-path-rewrite.replacepathregex.regex=^/stt(.*)"
-      - "traefik.http.middlewares.stt-path-rewrite.replacepathregex.replacement=/api/asr-streaming$$1"
+    networks:
+      - ansible
     deploy:
       resources:
         reservations:
@@ -156,27 +57,7 @@ services:
             - driver: nvidia
               device_ids: ['${STT_GPU_DEVICE:-0}']
               capabilities: [gpu]
-
-  llm:
-    restart: unless-stopped
-    build:
-      context: services/ollama
-      dockerfile: Dockerfile
-    volumes:
-      - ./volumes/ollama:/root/.ollama
-    environment:
-      - OLLAMA_HOST=0.0.0.0:11434
-      - KYUTAI_LLM_MODEL=${KYUTAI_LLM_MODEL:-llama3.2:3b}
-      - OLLAMA_NUM_PARALLEL=3
-    ports:
-      - "11434:11434"  # Port 11434 externe et interne (default Ollama port)
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              device_ids: ['${LLM_GPU_DEVICE:-0}']
-              capabilities: [gpu]
-
 networks:
-  default:
+  ansible:
+    external: true
+    name: ansible

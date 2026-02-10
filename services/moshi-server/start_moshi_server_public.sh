@@ -9,7 +9,7 @@ export LD_LIBRARY_PATH=$(python3 -c 'import sysconfig; print(sysconfig.get_confi
 uvx --from 'huggingface_hub[cli]' huggingface-cli login --token $HUGGING_FACE_HUB_TOKEN
 
 # Install PyTorch with CUDA 12.8 support for RTX 5060 Ti (sm_120)
-uv pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
+uv pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 
 rm -rf /root/.cargo/registry/src/index.crates.io-*/pin-utils-*
 # Copier le workspace complet
