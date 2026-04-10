@@ -4,7 +4,7 @@ set -ex
 
 export LD_LIBRARY_PATH=$(python3 -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')
 
-uvx --from 'huggingface_hub[cli]' huggingface-cli login --token $HUGGING_FACE_HUB_TOKEN
+uvx --from 'huggingface_hub[cli]' hf auth login --token $HUGGING_FACE_HUB_TOKEN
 
 # Install PyTorch with CUDA 12.8 support for RTX 5060 Ti (sm_120)
 uv pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
